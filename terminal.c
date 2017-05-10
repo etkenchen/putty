@@ -2746,8 +2746,9 @@ static void term_out(Terminal *term)
             if (nchars == 0) {
                 void *ret;
                 bufchain_prefix(&term->inbuf, &ret, &nchars);
-                if (nchars > sizeof(localbuf))
+                if (nchars > sizeof(localbuf)) {
                     nchars = sizeof(localbuf);
+                }
                 memcpy(localbuf, ret, nchars);
                 bufchain_consume(&term->inbuf, nchars);
                 chars = localbuf;
@@ -2760,8 +2761,9 @@ static void term_out(Terminal *term)
              * Optionally log the session traffic to a file. Useful for
              * debugging and possibly also useful for actual logging.
              */
-            if (term->logtype == LGTYP_DEBUG && term->logctx)
+            if (term->logtype == LGTYP_DEBUG && term->logctx) {
                 logtraffic(term->logctx, (unsigned char) c, LGTYP_DEBUG);
+            }
         } else {
             c = unget;
             unget = -1;
@@ -2785,18 +2787,20 @@ static void term_out(Terminal *term)
              * termination sequence.
              */
             if (term->only_printing) {
-                if (c == '\033')
+                if (c == '\033') {
                     term->print_state = 1;
-                else if (c == (unsigned char)'\233')
+                } else if (c == (unsigned char)'\233') {
                     term->print_state = 2;
-                else if (c == '[' && term->print_state == 1)
+                } else if (c == '[' && term->print_state == 1) {
                     term->print_state = 2;
-                else if (c == '4' && term->print_state == 2)
+                } else if (c == '4' && term->print_state == 2) {
                     term->print_state = 3;
-                else if (c == 'i' && term->print_state == 3)
+                } else if (c == 'i' && term->print_state == 3) {
                     term->print_state = 4;
-                else
+                } else {
                     term->print_state = 0;
+                }
+
                 if (term->print_state == 4) {
                     term_print_finish(term);
                 }
@@ -2806,7 +2810,7 @@ static void term_out(Terminal *term)
 
         /* First see about all those translations. */
         if (term->termstate == TOPLEVEL) {
-            if (in_utf(term))
+            if (in_utf(term)) {
                 switch (term->utf_state) {
                     case 0:
                         if (c < 0x80) {
@@ -2847,8 +2851,9 @@ static void term_out(Terminal *term)
                             break;
                         }
                         term->utf_char = (term->utf_char << 6) | (c & 0x3f);
-                        if (--term->utf_state)
+                        if (--term->utf_state) {
                             continue;
+                        }
 
                         c = term->utf_char;
 
@@ -2857,45 +2862,54 @@ static void term_out(Terminal *term)
                                 (c < 0x800 && term->utf_size >= 2) ||
                                 (c < 0x10000 && term->utf_size >= 3) ||
                                 (c < 0x200000 && term->utf_size >= 4) ||
-                                (c < 0x4000000 && term->utf_size >= 5))
+                                (c < 0x4000000 && term->utf_size >= 5)) {
                             c = UCSERR;
+                        }
 
                         /* Unicode line separator and paragraph separator are CR-LF */
-                        if (c == 0x2028 || c == 0x2029)
+                        if (c == 0x2028 || c == 0x2029) {
                             c = 0x85;
+                        }
 
                         /* High controls are probably a Baaad idea too. */
-                        if (c < 0xA0)
+                        if (c < 0xA0) {
                             c = 0xFFFD;
+                        }
 
                         /* The UTF-16 surrogates are not nice either. */
                         /*       The standard give the option of decoding these: 
                          *       I don't want to! */
-                        if (c >= 0xD800 && c < 0xE000)
+                        if (c >= 0xD800 && c < 0xE000) {
                             c = UCSERR;
+                        }
 
                         /* ISO 10646 characters now limited to UTF-16 range. */
-                        if (c > 0x10FFFF)
+                        if (c > 0x10FFFF) {
                             c = UCSERR;
+                        }
 
                         /* This is currently a TagPhobic application.. */
-                        if (c >= 0xE0000 && c <= 0xE007F)
+                        if (c >= 0xE0000 && c <= 0xE007F) {
                             continue;
+                        }
 
                         /* U+FEFF is best seen as a null. */
-                        if (c == 0xFEFF)
+                        if (c == 0xFEFF) {
                             continue;
+                        }
                         /* But U+FFFE is an error. */
-                        if (c == 0xFFFE || c == 0xFFFF)
+                        if (c == 0xFFFE || c == 0xFFFF) {
                             c = UCSERR;
+                        }
 
                         break;
                 }
             /* Are we in the nasty ACS mode? Note: no sco in utf mode. */
-            else if(term->sco_acs && 
-                    (c!='\033' && c!='\012' && c!='\015' && c!='\b'))
-            {
-                if (term->sco_acs == 2) c |= 0x80;
+            } else if(term->sco_acs && 
+                    (c!='\033' && c!='\012' && c!='\015' && c!='\b')) {
+                if (term->sco_acs == 2) {
+                    c |= 0x80;
+                }
                 c |= CSET_SCOACS;
             } else {
                 switch (term->cset_attr[term->cset]) {
@@ -2906,10 +2920,11 @@ static void term_out(Terminal *term)
                      * the same encoding.
                      */
                     case CSET_LINEDRW:
-                        if (term->ucsdata->unitab_ctrl[c] != 0xFF)
+                        if (term->ucsdata->unitab_ctrl[c] != 0xFF) {
                             c = term->ucsdata->unitab_ctrl[c];
-                        else
+                        } else {
                             c = ((unsigned char) c) | CSET_LINEDRW;
+                        }
                         break;
 
                     case CSET_GBCHR:
@@ -2919,13 +2934,16 @@ static void term_out(Terminal *term)
                             break;
                         }
                     /*FALLTHROUGH*/ case CSET_ASCII:
-                        if (term->ucsdata->unitab_ctrl[c] != 0xFF)
+                        if (term->ucsdata->unitab_ctrl[c] != 0xFF) {
                             c = term->ucsdata->unitab_ctrl[c];
-                        else
+                        } else {
                             c = ((unsigned char) c) | CSET_ASCII;
+                        }
                         break;
                     case CSET_SCOACS:
-                        if (c>=' ') c = ((unsigned char)c) | CSET_SCOACS;
+                        if (c>=' ') {
+                            c = ((unsigned char)c) | CSET_SCOACS;
+                        }
                         break;
                 }
             }
@@ -2937,9 +2955,9 @@ static void term_out(Terminal *term)
          */
         if ((c & -32) == 0x80 && term->termstate < DO_CTRLS &&
                 !term->vt52_mode && has_compat(VT220)) {
-            if (c == 0x9a)
+            if (c == 0x9a) {
                 c = 0;
-            else {
+            } else {
                 term->termstate = SEEN_ESC;
                 term->esc_query = FALSE;
                 c = '@' + (c & 0x1F);
@@ -2948,8 +2966,9 @@ static void term_out(Terminal *term)
 
         /* Or the GL control. */
         if (c == '\177' && term->termstate < DO_CTRLS && has_compat(OTHER)) {
-            if (term->curs.x && !term->wrapnext)
+            if (term->curs.x && !term->wrapnext) {
                 term->curs.x--;
+            }
             term->wrapnext = FALSE;
             /* destructive backspace might be disabled */
             if (!term->no_dbackspace) {
@@ -2958,7 +2977,7 @@ static void term_out(Terminal *term)
                 copy_termchar(scrlineptr(term->curs.y),
                         term->curs.x, &term->erase_char);
             }
-        } else
+        } else {
             /* Or normal C0 controls. */
             if ((c & ~0x1F) == 0 && term->termstate < DO_CTRLS) {
                 switch (c) {
@@ -3131,7 +3150,7 @@ static void term_out(Terminal *term)
                         seen_disp_event(term);
                         break;
                 }
-            } else
+            } else {
                 switch (term->termstate) {
                     case TOPLEVEL:
                         /* Only graphic characters get this far;
@@ -4719,6 +4738,9 @@ static void term_out(Terminal *term)
 #endif
                     default: break;	       /* placate gcc warning about enum use */
                 }
+            }
+        }
+
         if (term->selstate != NO_SELECTION) {
             pos cursplus = term->curs;
             incpos(cursplus);
@@ -4727,8 +4749,9 @@ static void term_out(Terminal *term)
     }
 
     term_print_flush(term);
-    if (term->logflush && term->logctx)
+    if (term->logflush && term->logctx) {
         logflush(term->logctx);
+    }
 }
 
 /*
