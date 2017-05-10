@@ -824,7 +824,7 @@ static void charclass_handler(union control *ctrl, void *dlg,
 }
 
 struct colour_data {
-    union control *listbox, *redit, *gedit, *bedit, *button;
+    union control *listbox, *redit, *gedit, *bedit, *button, *hedit;
 };
 
 static const char *const colours[] = {
@@ -850,6 +850,7 @@ static void colour_handler(union control *ctrl, void *dlg,
     int update = FALSE, clear = FALSE, r, g, b;
 
     if (event == EVENT_REFRESH) {
+        dlg_editbox_set(cd->hedit, dlg, conf_get_str(conf, CONF_highlight));
 	if (ctrl == cd->listbox) {
 	    int i;
 	    dlg_update_start(ctrl, dlg);
@@ -875,6 +876,13 @@ static void colour_handler(union control *ctrl, void *dlg,
 	    update = TRUE;
 	}
     } else if (event == EVENT_VALCHANGE) {
+        if (ctrl == cd->hedit) {
+            char *str;
+
+            str = dlg_editbox_get(ctrl, dlg);
+            conf_set_str(conf, CONF_highlight, str);
+        }
+
 	if (ctrl == cd->redit || ctrl == cd->gedit || ctrl == cd->bedit) {
 	    /* The user has changed the colour using the edit boxes. */
 	    char *str;
@@ -1933,6 +1941,13 @@ void setup_config_box(struct controlbox *b, int midsession,
 				 colour_handler, P(cd));
     cd->button->generic.column = 1;
     ctrl_columns(s, 1, 100);
+
+    s = ctrl_getset(b, "Window/Colours", "highlight",
+            "set highlight strings");
+    ctrl_columns(s, 1, 100);
+    cd->hedit = ctrl_editbox(s, "", '\0', 100, HELPCTX(colours_config),
+            colour_handler, P(cd), P(NULL));
+    cd->hedit->generic.column = 0;
 
     /*
      * The Connection panel. This doesn't show up if we're in a
