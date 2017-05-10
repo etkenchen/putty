@@ -152,6 +152,7 @@ struct gui_data {
     int drawtype;
     int meta_mod_mask;
     trigger_panel tp;
+    trigger_data tgr_data;
 };
 
 static void cache_conf_values(struct gui_data *inst)
@@ -2040,14 +2041,19 @@ void notify_remote_exit(void *frontend)
 
 void trigger_btn(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
+    struct gui_data *inst = (struct gui_data *)data;
     char *btn_label;
 
     btn_label = (char *)gtk_button_get_label(GTK_BUTTON(widget));
 
     if (strcmp(btn_label, "run") == 0) {
+        inst->tgr_data.run = 1;
+        inst->tgr_data.stop = 0;
     }
 
     if (strcmp(btn_label, "stop") == 0) {
+        inst->tgr_data.run = 0;
+        inst->tgr_data.stop = 1;
     }
 }
 
@@ -4750,3 +4756,30 @@ struct gui_data *new_session_window(Conf *conf, const char *geometry_string)
 
     return inst;
 }
+
+trigger_data get_trigger_data(void *frontend)
+{
+    struct gui_data *inst = (struct gui_data *)frontend;
+    trigger_data tgr_data;
+    int i,j;
+
+    tgr_data = inst->tgr_data;
+
+    for (i=0; i<5; i++) {
+        tgr_data.str[i] = (char *)gtk_entry_get_text(GTK_ENTRY(inst->tp.tgr_editbox[i]));
+
+        for (j=0; j<2; j++) {
+            if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(inst->tp.tgr_type[i][j]))) {
+                break;
+            }
+        }
+        tgr_data.type[i] = j;
+
+    }
+
+    inst->tgr_data.run = 0;
+    inst->tgr_data.stop = 0;
+
+    return tgr_data;
+}
+

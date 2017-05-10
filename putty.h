@@ -675,6 +675,15 @@ int frontend_is_utf8(void *frontend);
 
 void cleanup_exit(int);
 
+typedef struct {
+    int run;
+    int stop;
+    char *str[5];
+    int type[5];
+} trigger_data;
+
+trigger_data get_trigger_data(void *frontend);
+
 /*
  * Exports from conf.c, and a big enum (via parametric macro) of
  * configuration option keys.

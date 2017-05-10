@@ -102,6 +102,8 @@ void get_window_pixels(void *frontend, int *x, int *y) { *x = 0; *y = 0; }
 char *get_window_title(void *frontend, int icon) { return "moo"; }
 int frontend_is_utf8(void *frontend) { return TRUE; }
 
+trigger_data get_trigger_data(void *frontend) {trigger_data tgr_data; return tgr_data; }
+
 /* needed by timing.c */
 void timer_change_notify(unsigned long next) { }
 
