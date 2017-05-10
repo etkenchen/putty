@@ -6377,6 +6377,67 @@ int term_ldisc(Terminal *term, int option)
     return FALSE;
 }
 
+char *get_one_line(const char *data, int len)
+{
+    char *s_in = NULL, *s_cat = NULL;
+    static char *s_pre = NULL;
+    static char *one_line = NULL;
+    int chars;
+    int i;
+
+    if (one_line != NULL) {
+        sfree(one_line);
+        one_line = NULL;
+    }
+
+    if (s_pre == NULL) {
+        s_pre = snewn(1, char);
+        s_pre[0] = '\0';
+    }
+
+    s_in = snewn(len+1, char);
+    memcpy(s_in, data, len);
+    s_in[len] = '\0';
+
+    chars = strlen(s_in) + strlen(s_pre);
+    s_cat = snewn(chars + 1, char);
+    strcpy(s_cat, s_pre);
+    strcat(s_cat, s_in);
+    s_cat[chars] = '\0';
+    sfree(s_pre);
+    s_pre = NULL;
+    sfree(s_in);
+    s_in = NULL;
+
+    for (i=0; i<chars; i++) {
+        if (s_cat[i] == 0xa) {  //find new line character
+            if (i != chars) {
+                s_pre = snewn(chars - i + 1, char);
+                memcpy(s_pre, &s_cat[i+1], chars - i);
+                s_pre[chars - i] = '\0';
+            }
+            one_line = snewn(i + 2, char);
+            memcpy(one_line, s_cat, i + 1);
+            one_line[i+1] = '\0';
+
+            sfree(s_cat);
+            s_cat = NULL;
+            chars = 0;
+
+            break;
+        }
+    }
+
+    if (chars != 0) {
+        s_pre = snewn(chars + 1, char);
+        strcpy(s_pre, s_cat);
+        sfree(s_cat);
+        s_cat = NULL;
+    }
+
+    return one_line;
+}
+
 int term_data(Terminal *term, int is_stderr, const char *data, int len)
 {
     bufchain_add(&term->inbuf, data, len);
