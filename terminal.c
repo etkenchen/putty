@@ -4943,13 +4943,14 @@ static termchar *term_bidi_line(Terminal *term, struct termline *ldata,
 void highlight_string(Terminal *term, termchar *newline)
 {
     char line_string[term->cols + 1];
+    char *highlight_conf_strs;
+    char *temp;
     char *highlight_str;
     int target = 0;
     int search_start = 0;
     char *ptr;
+    const char *del = ",";
     int i;
-
-    highlight_str = conf_get_str(term->conf, CONF_highlight);
 
     for (i = 0; i < term->cols; i++) {
         line_string[i] = (char)newline[i].chr;
@@ -4957,18 +4958,38 @@ void highlight_string(Terminal *term, termchar *newline)
 
     line_string[term->cols] = '\0';
 
-    do {
-        ptr = strstr(line_string + search_start, highlight_str);
-        if (ptr != NULL) {
-            target = ptr - line_string;
+    temp = conf_get_str(term->conf, CONF_highlight);
 
-            for (i=0; i<strlen(highlight_str); i++) {
-                newline[target + i].attr &=~0xff;
-                newline[target + i].attr |= 5;
+    highlight_conf_strs = snewn(strlen(temp) + 1, char);
+    if (!highlight_conf_strs) {
+        return;
+    }
+
+    strncpy(highlight_conf_strs, temp, strlen(temp));
+    highlight_conf_strs[strlen(temp)] = '\0';
+
+    highlight_str = strtok(highlight_conf_strs, del);
+
+    while(highlight_str != NULL) {
+        target = 0;
+        search_start = 0;
+        do {
+            ptr = strstr(line_string + search_start, highlight_str);
+            if (ptr != NULL) {
+                target = ptr - line_string;
+
+                for (i=0; i<strlen(highlight_str); i++) {
+                    newline[target + i].attr &=~0xff;
+                    newline[target + i].attr |= 5;
+                }
             }
-        }
-        search_start += strlen(highlight_str);
-    } while (search_start < strlen(line_string));
+            search_start += strlen(highlight_str);
+        } while (search_start < strlen(line_string));
+
+        highlight_str = strtok(NULL, del);
+    }
+
+    sfree(highlight_conf_strs);
 
 }
 
