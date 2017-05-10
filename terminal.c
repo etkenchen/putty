@@ -4943,11 +4943,13 @@ static termchar *term_bidi_line(Terminal *term, struct termline *ldata,
 void highlight_string(Terminal *term, termchar *newline)
 {
     char line_string[term->cols + 1];
-    char highlight_str[] = "key";
+    char *highlight_str;
     int target = 0;
     int search_start = 0;
     char *ptr;
     int i;
+
+    highlight_str = conf_get_str(term->conf, CONF_highlight);
 
     for (i = 0; i < term->cols; i++) {
         line_string[i] = (char)newline[i].chr;
