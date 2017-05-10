@@ -4940,6 +4940,36 @@ static termchar *term_bidi_line(Terminal *term, struct termline *ldata,
     return lchars;
 }
 
+void highlight_string(Terminal *term, termchar *newline)
+{
+    char line_string[term->cols + 1];
+    char highlight_str[] = "key";
+    int target = 0;
+    int search_start = 0;
+    char *ptr;
+    int i;
+
+    for (i = 0; i < term->cols; i++) {
+        line_string[i] = (char)newline[i].chr;
+    }
+
+    line_string[term->cols] = '\0';
+
+    do {
+        ptr = strstr(line_string + search_start, highlight_str);
+        if (ptr != NULL) {
+            target = ptr - line_string;
+
+            for (i=0; i<strlen(highlight_str); i++) {
+                newline[target + i].attr &=~0xff;
+                newline[target + i].attr |= 5;
+            }
+        }
+        search_start += strlen(highlight_str);
+    } while (search_start < strlen(line_string));
+
+}
+
 /*
  * Given a context, update the window. Out of paranoia, we don't
  * allow WM_PAINT responses to do scrolling optimisations.
@@ -5155,6 +5185,8 @@ static void do_paint(Terminal *term, Context ctx, int may_optimise)
             /* Combining characters are still read from lchars */
             newline[j].cc_next = 0;
         }
+
+        highlight_string(term, newline);
 
         /*
          * Now loop over the line again, noting where things have
