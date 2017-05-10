@@ -4783,3 +4783,12 @@ trigger_data get_trigger_data(void *frontend)
     return tgr_data;
 }
 
+int set_trigger_label(void *frontend, const char *tgr_state)
+{
+    struct gui_data *inst = (struct gui_data *)frontend;
+
+    gtk_label_set_text(GTK_LABEL(inst->tp.state_label), tgr_state);
+
+    return 0;
+}
+

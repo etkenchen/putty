@@ -103,6 +103,7 @@ char *get_window_title(void *frontend, int icon) { return "moo"; }
 int frontend_is_utf8(void *frontend) { return TRUE; }
 
 trigger_data get_trigger_data(void *frontend) {trigger_data tgr_data; return tgr_data; }
+int set_trigger_label(void *frontend, const char *tgr_state) {return 0; }
 
 /* needed by timing.c */
 void timer_change_notify(unsigned long next) { }

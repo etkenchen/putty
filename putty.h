@@ -683,6 +683,7 @@ typedef struct {
 } trigger_data;
 
 trigger_data get_trigger_data(void *frontend);
+int set_trigger_label(void *frontend, const char *tgr_state);
 
 /*
  * Exports from conf.c, and a big enum (via parametric macro) of
