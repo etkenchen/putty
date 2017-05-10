@@ -592,6 +592,7 @@ void save_open_settings(void *sesskey, Conf *conf)
 #endif
 		    );
     write_setting_i(sesskey, "ScrollbackLines", conf_get_int(conf, CONF_savelines));
+    write_setting_s(sesskey, "Highlight", conf_get_str(conf, CONF_highlight));
     write_setting_i(sesskey, "DECOriginMode", conf_get_int(conf, CONF_dec_om));
     write_setting_i(sesskey, "AutoWrapMode", conf_get_int(conf, CONF_wrap_mode));
     write_setting_i(sesskey, "LFImpliesCR", conf_get_int(conf, CONF_lfhascr));
@@ -988,6 +989,7 @@ void load_open_settings(void *sesskey, Conf *conf)
 #endif
 		 );
     gppi(sesskey, "ScrollbackLines", 2000, conf, CONF_savelines);
+    gpps(sesskey, "Highlight", "", conf, CONF_highlight);
     gppi(sesskey, "DECOriginMode", 0, conf, CONF_dec_om);
     gppi(sesskey, "AutoWrapMode", 1, conf, CONF_wrap_mode);
     gppi(sesskey, "LFImpliesCR", 0, conf, CONF_lfhascr);
