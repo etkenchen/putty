@@ -1143,6 +1143,10 @@ static void term_schedule_update(Terminal *term)
  */
 static void seen_disp_event(Terminal *term)
 {
+    if (term->trigger_pause_display) {
+        return;
+    }
+
     term->seen_disp_event = TRUE;      /* for scrollback-reset-on-activity */
     term_schedule_update(term);
 }
@@ -6438,9 +6442,126 @@ char *get_one_line(const char *data, int len)
     return one_line;
 }
 
+enum {
+    TGR_AUTO = 0,
+    TGR_STOP,
+    TGR_WAIT,
+    TGR_SINGLE,
+    TGR_NORMAL
+};
+
+int update_trigger_state(Terminal *term, const char *data, int len)
+{
+    char *s;
+    int i;
+    trigger_data tgr_data;
+    char *label_string[5] = {"auto", "stop", "wait", "single", "normal"};
+
+    tgr_data = get_trigger_data(term->frontend);
+    switch (term->trigger_state)
+    {
+        case TGR_AUTO:
+            if (tgr_data.stop) {
+                term->trigger_state = TGR_STOP;
+                break;
+            }
+
+            for (i=0; i<5; i++) {
+                if ((tgr_data.type[i] != 0) && (strlen(tgr_data.str[i]) != 0)) {
+                    term->trigger_state = TGR_WAIT;
+                }
+            }
+            break;
+
+        case TGR_STOP:
+            if (tgr_data.run) {
+                term->trigger_state = TGR_AUTO;    //preset for check trigger condition
+                for (i=0; i<5; i++) {
+                    if ((tgr_data.type[i] != 0) && (strlen(tgr_data.str[i]) != 0)) {
+                        term->trigger_state = TGR_WAIT;
+                        break;
+                    }
+                }
+            }
+
+            break;
+
+        case TGR_WAIT:
+            if (tgr_data.stop) {
+                term->trigger_state = TGR_STOP;
+                break;
+            }
+
+            s = get_one_line(data, len);
+            if (s != NULL) {
+                for (i=0; i<5; i++) {   //check single
+                    if ((tgr_data.type[i] == 2) && (strlen(tgr_data.str[i]) != 0)) {
+                        if (strstr(s, tgr_data.str[i])) {
+                            term->trigger_state = TGR_SINGLE;
+                            break;
+                        }
+                    }
+
+                }
+                if (term->trigger_state != TGR_WAIT) {
+                    break;
+                }
+
+                for (i=0; i<5; i++) {   //check normal
+                    if ((tgr_data.type[i] == 1) && (strlen(tgr_data.str[i]) != 0)) {
+                        if (strstr(s, tgr_data.str[i])) {
+                            term->trigger_state = TGR_NORMAL;
+                            break;
+                        }
+                    }
+
+                }
+                if (term->trigger_state != TGR_WAIT) {
+                    break;
+                }
+
+                term->trigger_state = TGR_AUTO;    //preset for check trigger condition
+                for (i=0; i<5; i++) {
+                    if ((tgr_data.type[i] != 0) && (strlen(tgr_data.str[i]) != 0)) {
+                        term->trigger_state = TGR_WAIT;
+                        break;
+                    }
+                }
+            }
+
+            break;
+
+        case TGR_SINGLE:
+            term->trigger_state = TGR_STOP;
+            break;
+
+        case TGR_NORMAL:
+            term->trigger_state = TGR_WAIT;
+            break;
+
+        default:
+            term->trigger_state = TGR_AUTO;
+            break;
+    }
+
+    set_trigger_label(term->frontend, label_string[term->trigger_state]);
+
+    if ((term->trigger_state == TGR_AUTO) ||
+            (term->trigger_state == TGR_SINGLE) ||
+            (term->trigger_state == TGR_NORMAL)) {
+        term->trigger_pause_display = 0;
+    } else {
+        term->trigger_pause_display = 1;
+    }
+
+    return 0;
+}
+
 int term_data(Terminal *term, int is_stderr, const char *data, int len)
 {
     bufchain_add(&term->inbuf, data, len);
+
+    update_trigger_state(term, data, len);
 
     if (!term->in_term_out) {
         term->in_term_out = TRUE;
