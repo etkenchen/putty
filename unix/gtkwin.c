@@ -54,6 +54,17 @@ GdkAtom compound_text_atom, utf8_string_atom;
 
 struct clipboard_data_instance;
 
+typedef struct {
+    GtkWidget *top_vbox;    //trigger control panel top vbox
+    GtkWidget *control_hbox;    //control buttons and state hbox
+    GtkWidget *run_btn;     //run button
+    GtkWidget *stop_btn;    //stop button
+    GtkWidget *state_label; //state label
+    GtkWidget *tgr_hbox[5]; //trigger condition controls hbox
+    GtkWidget *tgr_editbox[5];  //trigger string entry
+    GtkWidget *tgr_type[5][3];  //trigger type radio button
+} trigger_panel;
+
 struct gui_data {
     GtkWidget *window, *area, *sbar;
     gboolean sbar_visible;
@@ -140,6 +151,7 @@ struct gui_data {
     int cursor_type;
     int drawtype;
     int meta_mod_mask;
+    trigger_panel tp;
 };
 
 static void cache_conf_values(struct gui_data *inst)
@@ -647,6 +659,15 @@ gint key_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
     wchar_t ucsoutput[2];
     int ucsval, start, end, special, output_charset, use_ucsoutput;
     int nethack_mode, app_keypad_mode;
+
+    {
+        int i;
+        for (i=0; i<5; i++) {
+            if (gtk_widget_is_focus(GTK_WIDGET(inst->tp.tgr_editbox[i]))) {
+                return FALSE;
+            }
+        }
+    }
 
     /* Remember the timestamp. */
     inst->input_event_time = event->time;
@@ -1891,6 +1912,7 @@ static gboolean button_internal(struct gui_data *inst, GdkEventButton *event)
 gboolean button_event(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
     struct gui_data *inst = (struct gui_data *)data;
+    gtk_widget_grab_focus(widget);
     return button_internal(inst, event);
 }
 
@@ -2014,6 +2036,19 @@ void notify_remote_exit(void *frontend)
     struct gui_data *inst = (struct gui_data *)frontend;
 
     queue_toplevel_callback(exit_callback, inst);
+}
+
+void trigger_btn(GtkWidget *widget, GdkEventButton *event, gpointer data)
+{
+    char *btn_label;
+
+    btn_label = (char *)gtk_button_get_label(GTK_BUTTON(widget));
+
+    if (strcmp(btn_label, "run") == 0) {
+    }
+
+    if (strcmp(btn_label, "stop") == 0) {
+    }
 }
 
 void destroy(GtkWidget *widget, gpointer data)
@@ -4326,6 +4361,59 @@ static void get_monitor_geometry(GtkWidget *widget, GdkRectangle *geometry)
 #endif
 }
 
+void create_trigger_panel(struct gui_data *inst)
+{
+    trigger_panel *tp;
+    int i, j;
+
+    tp = &inst->tp;
+    if (tp == NULL) {
+        return;
+    }
+
+    tp->top_vbox = gtk_vbox_new(FALSE, 0);
+    gtk_widget_set_can_focus(tp->top_vbox, TRUE);
+
+    tp->control_hbox = gtk_hbox_new(FALSE, 0);
+    tp->run_btn = gtk_button_new();
+    tp->stop_btn = gtk_button_new();
+    tp->state_label = gtk_label_new("auto");
+    gtk_button_set_label(GTK_BUTTON(tp->run_btn), "run");
+    gtk_button_set_label(GTK_BUTTON(tp->stop_btn), "stop");
+    gtk_box_pack_start(GTK_BOX(tp->control_hbox), tp->run_btn, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tp->control_hbox), tp->stop_btn, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(tp->control_hbox), tp->state_label, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(tp->run_btn), "button_press_event", G_CALLBACK(trigger_btn), inst);
+    g_signal_connect(G_OBJECT(tp->stop_btn), "button_press_event", G_CALLBACK(trigger_btn), inst);
+    gtk_widget_show(tp->run_btn);
+    gtk_widget_show(tp->stop_btn);
+    gtk_widget_show(tp->state_label);
+    gtk_widget_show(tp->control_hbox);
+    gtk_box_pack_start(GTK_BOX(tp->top_vbox), tp->control_hbox, FALSE, FALSE, 0);
+
+    for (i=0; i<5; i++) {
+        tp->tgr_hbox[i] = gtk_hbox_new(FALSE, 0);
+        gtk_widget_show(tp->tgr_hbox[i]);
+
+        tp->tgr_editbox[i] = gtk_entry_new();
+        gtk_widget_set_can_focus(tp->tgr_editbox[i], TRUE);
+        gtk_box_pack_start(GTK_BOX(tp->tgr_hbox[i]), tp->tgr_editbox[i], FALSE, FALSE, 0);
+        gtk_widget_show(tp->tgr_editbox[i]);
+
+        tp->tgr_type[i][0] = gtk_radio_button_new_with_label(NULL, "auto");
+        tp->tgr_type[i][1] = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(tp->tgr_type[i][0]), "normal");
+        tp->tgr_type[i][2] = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(tp->tgr_type[i][1]), "single");
+        for (j=0; j<3; j++) {
+            gtk_box_pack_start(GTK_BOX(tp->tgr_hbox[i]), tp->tgr_type[i][j], FALSE, FALSE, 0);
+            gtk_widget_show(tp->tgr_type[i][j]);
+        }
+        gtk_box_pack_start(GTK_BOX(tp->top_vbox), tp->tgr_hbox[i], FALSE, FALSE, 0);
+    }
+
+    gtk_widget_show(tp->top_vbox);
+    gtk_box_pack_start(GTK_BOX(inst->hbox), tp->top_vbox, FALSE, FALSE, 0);
+}
+
 struct gui_data *new_session_window(Conf *conf, const char *geometry_string)
 {
     struct gui_data *inst;
@@ -4370,6 +4458,7 @@ struct gui_data *new_session_window(Conf *conf, const char *geometry_string)
         utf8_string_atom = gdk_atom_intern("UTF8_STRING", FALSE);
 
     inst->area = gtk_drawing_area_new();
+    gtk_widget_set_can_focus(GTK_WIDGET(inst->area), TRUE);
     gtk_widget_set_name(GTK_WIDGET(inst->area), "drawing-area");
 
 #if GTK_CHECK_VERSION(2,0,0)
@@ -4441,6 +4530,8 @@ struct gui_data *new_session_window(Conf *conf, const char *geometry_string)
     gtk_box_pack_start(inst->hbox, inst->area, TRUE, TRUE, 0);
     if (!conf_get_int(inst->conf, CONF_scrollbar_on_left))
         gtk_box_pack_start(inst->hbox, inst->sbar, FALSE, FALSE, 0);
+
+    create_trigger_panel(inst);
 
     gtk_container_add(GTK_CONTAINER(inst->window), GTK_WIDGET(inst->hbox));
 
